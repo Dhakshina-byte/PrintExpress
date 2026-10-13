@@ -18,6 +18,7 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.example.cse5011.DB.dbconnect;
 import com.example.cse5011.ImageSliderAdapter;
 import com.example.cse5011.R;
+import com.example.cse5011.cart;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
@@ -110,7 +111,11 @@ public class ProductView extends AppCompatActivity {
                     selectedSize = selectedChip.getText().toString();
                 }
             }
-            Toast.makeText(ProductView.this, "Proceeding to checkout for " + quantity + "x " + title + " (" + selectedSize + ")", Toast.LENGTH_SHORT).show();
+            dbconnect db = new dbconnect(ProductView.this);
+            db.addToCart(title != null ? title : "Product", price != null ? price : "$0.00", selectedSize, quantity, imageRes);
+
+            Intent cartIntent = new Intent(ProductView.this, cart.class);
+            startActivity(cartIntent);
         });
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {

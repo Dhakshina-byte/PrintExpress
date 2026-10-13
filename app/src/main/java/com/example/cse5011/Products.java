@@ -1,5 +1,6 @@
 package com.example.cse5011;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import android.widget.ImageView;
@@ -63,7 +64,10 @@ public class Products extends AppCompatActivity {
         ImageView cartIcon = findViewById(R.id.cartIcon);
 
         profileIcon.setOnClickListener(v -> Toast.makeText(Products.this, "Profile clicked", Toast.LENGTH_SHORT).show());
-        cartIcon.setOnClickListener(v -> Toast.makeText(Products.this, "Cart clicked", Toast.LENGTH_SHORT).show());
+        cartIcon.setOnClickListener(v -> {
+            Intent intent = new Intent(Products.this, cart.class);
+            startActivity(intent);
+        });
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());

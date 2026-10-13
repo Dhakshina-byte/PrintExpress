@@ -7,15 +7,19 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import com.example.cse5011.R;
+import com.example.cse5011.model.CartItem;
 import com.example.cse5011.model.Product;
 import com.example.cse5011.model.users;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class dbconnect extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "Printexpress";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
 
     // Users Table
     private static final String TABLE_USERS = "users";
@@ -40,6 +44,16 @@ public class dbconnect extends SQLiteOpenHelper {
     private static final String C_SIZE = "size";
     private static final String C_QUANTITY = "quantity";
     private static final String C_IMAGE = "image_res";
+
+    // Orders / Purchase History Table
+    private static final String TABLE_ORDERS = "orders";
+    private static final String O_ID = "id";
+    private static final String O_TITLE = "title";
+    private static final String O_PRICE = "price";
+    private static final String O_SIZE = "size";
+    private static final String O_QUANTITY = "quantity";
+    private static final String O_DATE = "date";
+    private static final String O_IMAGE = "image_res";
 
     public dbconnect(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -68,9 +82,19 @@ public class dbconnect extends SQLiteOpenHelper {
                 + C_QUANTITY + " INTEGER,"
                 + C_IMAGE + " INTEGER" + ")";
 
+        String CREATE_ORDERS_TABLE = "CREATE TABLE " + TABLE_ORDERS + "("
+                + O_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + O_TITLE + " TEXT,"
+                + O_PRICE + " TEXT,"
+                + O_SIZE + " TEXT,"
+                + O_QUANTITY + " INTEGER,"
+                + O_DATE + " TEXT,"
+                + O_IMAGE + " INTEGER" + ")";
+
         db.execSQL(CREATE_USERS_TABLE);
         db.execSQL(CREATE_PRODUCTS_TABLE);
         db.execSQL(CREATE_CART_TABLE);
+        db.execSQL(CREATE_ORDERS_TABLE);
     }
 
     @Override
@@ -78,10 +102,11 @@ public class dbconnect extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_PRODUCTS);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_CART);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_ORDERS);
         onCreate(db);
     }
 
-    // --- Users Table Operations ---
+    // --- Users Operations ---
     public void addUser(users user) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -104,7 +129,7 @@ public class dbconnect extends SQLiteOpenHelper {
         return exists;
     }
 
-    // --- Products Table Operations ---
+    // --- Products Operations ---
     public void addProduct(Product product) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -138,7 +163,7 @@ public class dbconnect extends SQLiteOpenHelper {
         return productList;
     }
 
-    // --- Cart Table Operations ---
+    // --- Cart Operations ---
     public void addToCart(String title, String price, String size, int quantity, int imageRes) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -151,14 +176,33 @@ public class dbconnect extends SQLiteOpenHelper {
         db.close();
     }
 
-    public int getCartCount() {
+    public List<CartItem> getCartItems() {
+        List<CartItem> itemList = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_CART, null);
-        cursor.moveToFirst();
-        int count = cursor.getInt(0);
+        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_CART, null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                int id = cursor.getInt(cursor.getColumnIndexOrThrow(C_ID));
+                String title = cursor.getString(cursor.getColumnIndexOrThrow(C_TITLE));
+                String price = cursor.getString(cursor.getColumnIndexOrThrow(C_PRICE));
+                String size = cursor.getString(cursor.getColumnIndexOrThrow(C_SIZE));
+                int quantity = cursor.getInt(cursor.getColumnIndexOrThrow(C_QUANTITY));
+                int imageRes = cursor.getInt(cursor.getColumnIndexOrThrow(C_IMAGE));
+
+                itemList.add(new CartItem(id, title, price, size, quantity, imageRes));
+            } while (cursor.moveToNext());
+        }
+
         cursor.close();
         db.close();
-        return count;
+        return itemList;
+    }
+
+    public void deleteCartItem(int id) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_CART, C_ID + "=?", new String[]{String.valueOf(id)});
+        db.close();
     }
 
     public void clearCart() {
@@ -167,7 +211,57 @@ public class dbconnect extends SQLiteOpenHelper {
         db.close();
     }
 
-    // Helper to insert sample data if database is empty
+    // --- Purchase History / Orders Operations ---
+    public boolean checkoutCart() {
+        List<CartItem> cartItems = getCartItems();
+        if (cartItems.isEmpty()) {
+            return false;
+        }
+
+        SQLiteDatabase db = this.getWritableDatabase();
+        String currentDate = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date());
+
+        for (CartItem item : cartItems) {
+            ContentValues values = new ContentValues();
+            values.put(O_TITLE, item.getTitle());
+            values.put(O_PRICE, item.getPrice());
+            values.put(O_SIZE, item.getSize());
+            values.put(O_QUANTITY, item.getQuantity());
+            values.put(O_DATE, currentDate);
+            values.put(O_IMAGE, item.getImageRes());
+            db.insert(TABLE_ORDERS, null, values);
+        }
+
+        db.delete(TABLE_CART, null, null);
+        db.close();
+        return true;
+    }
+
+    public List<CartItem> getPurchaseHistory() {
+        List<CartItem> historyList = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_ORDERS + " ORDER BY " + O_ID + " DESC", null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                int id = cursor.getInt(cursor.getColumnIndexOrThrow(O_ID));
+                String title = cursor.getString(cursor.getColumnIndexOrThrow(O_TITLE));
+                String price = cursor.getString(cursor.getColumnIndexOrThrow(O_PRICE));
+                String size = cursor.getString(cursor.getColumnIndexOrThrow(O_SIZE));
+                int quantity = cursor.getInt(cursor.getColumnIndexOrThrow(O_QUANTITY));
+                String date = cursor.getString(cursor.getColumnIndexOrThrow(O_DATE));
+                int imageRes = cursor.getInt(cursor.getColumnIndexOrThrow(O_IMAGE));
+
+                historyList.add(new CartItem(id, title, price, size, quantity, imageRes, date));
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        db.close();
+        return historyList;
+    }
+
+    // Helper to insert sample product data if empty
     public void insertSampleProductsIfEmpty() {
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_PRODUCTS, null);
