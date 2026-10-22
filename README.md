@@ -14,7 +14,7 @@
   * Quantity selector controls (`-` / `+`).
 * **Persistent SQLite Shopping Cart:** Add/remove items, manage quantities, and view dynamic cart total calculations.
 * **Payment & Order Progress Tracker:**
-  * Multi-option checkout form supporting Card, UPI, and Cash on Delivery (COD).
+  * Multi-option checkout form supporting Card and Cash on Delivery (COD).
   * Visual 4-step order progress indicator (*Order Placed $\rightarrow$ Printing $\rightarrow$ Shipped $\rightarrow$ Delivered*).
   * Persistent purchase history log in SQLite.
 
